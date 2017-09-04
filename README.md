@@ -20,6 +20,7 @@ Link:https://biendata.com/competition/zhihu/
 本次任务的类别有1999类，提供的标签信息是该问题所属类别的编号，但在TensorFlow中我们需要提供的label为编号的One-hot coding。如果在预处理中进行编号到One-hot coding的转化，那么会是label占据大量的存储空间。因此这个步骤在每次读取batch时进行。
 
 因为我未使用char的数据，经过预处理将得到title和description的word id 序列，以及对应的label。
+
 | question id | title word id | desc word id | topic label |
 | :--: | :--- |:---|:---|
 | 	0  | 305,13549,22752,11,7225,2565,1106,16,...   |231,54,1681,54,11506,5714,7,...   | 7739004195693774975,3738968195649774859  |
