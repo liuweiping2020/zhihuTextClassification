@@ -8,7 +8,7 @@ Link:https://biendata.com/competition/zhihu/
 室友给我发了[覃秉丰老师讲的关于本次比赛的框架](https://github.com/Qinbf/Tensorflow/tree/master/Tensorflow%E5%9F%BA%E7%A1%80%E4%BD%BF%E7%94%A8%E4%B8%8E%E6%96%87%E6%9C%AC%E5%88%86%E7%B1%BB%E5%BA%94%E7%94%A8)
 参照着这个框架，结合自己的一些想法进行实验。
 做了大概三个星期，到8月5号放假回家，当时做到30名，线上评测F1得分0.40108。
-由于水平有限，途中遇到了不少问题，只做了[textCNN](https://github.com/buptchan/zhihuTextClassification/tree/master/textCNN)和[fastText](https://github.com/buptchan/zhihuTextClassification/tree/master/fastText)两个模型，没有做融合，其中大部分时间在做textCNN。
+自己水平比较低，实施途中遇到了不少问题，只做了[textCNN](https://github.com/buptchan/zhihuTextClassification/tree/master/textCNN)和[fastText](https://github.com/buptchan/zhihuTextClassification/tree/master/fastText)两个模型，没有做融合，其中大部分时间在做textCNN。
 
 ## 1.数据预处理
 此次提供的数据为知乎上标题（title）和描述(description)的文本信息，标题和描述均提供了word（词）和char（字）的数据。
@@ -47,7 +47,12 @@ Link:https://biendata.com/competition/zhihu/
 ## 4. 问题&教训
 ### 评估函数
 本次比赛知乎官方提供了一个评估函数的伪代码，但实际上是直接可以用的Python代码。与知乎提供的评估代码不同的是，QinBF老师在输出得分时多乘了一个2。在实验过程中，我的textCNN线下得分总是高出其线上得分不少(即使评估时不乘以2也不准确),然而其他人的textCNN线上线下评估很准确。
-在这个点上，我卡了很久，从数据开始到输出预测结果，整个流程走了一遍，都没有发现问题所在。后来有一次将预测类别标签的方法由TensorFlow提供的`tf.nn.top_K()`换成numpy中的`np.argsort()`方法,同时使用知乎给的评估函数，评估结果立刻变得准确。让我困惑的是，我拿一些数据比对了一下两个方法，结果没有什么太大区别，仅在少数情况下的对位置的排序不同。
+在这个点上，我卡了很久，从数据开始到输出预测结果，整个流程走了一遍，都没有发现问题所在。后来有一次将预测类别标签的方法由TensorFlow提供的`tf.nn.top_K()`换成numpy中的`np.argsort()`方法,同时使用知乎给的评估函数，评估结果立刻变得准确。让我困惑的是，我拿一些数据比对了一下两个方法，结果没有什么太大区别，仅在少数情况下的对位置的排序不同。对于这两种方法的不同，还需要深入探究一下。
+总的来说，最好整个流程都自己写出来，并且逐步测试，这样发现问题方便排查。我当时用了很多不是自己的代码，在排查问题的过程中明显感到很费力。
 
 ### 训练集与验证集
+当时有个想法：为了保证验证集抽样的随机性以带来更准确地验证结果，每一个Epoch开始时对数据集再次shuffle后进行划分验证集。
+想法出发点是好的，但这么做稀里糊涂就会把训练集与验证集放在了一起（shuffle的时候），失去了交叉验证的意义。实验室的同学也犯了类似的错误，线下评测发现分数特别高，以为自己憋了个大招，然而提交后看见分数才发现自己的失误。
 ### 模型检验
+TensorFlow提供了一个强大的可视化工具：TensorBoard。在其中实时观测各种指标、观测权重的分布随时间的变化，以及自动生成模型的图（Graph）。通过图可以检查各个节点的连接是否正确，从而找到代码中的错误。
+最初做textCNN我只用了title的数据，后来加上了description。但加上description提升很小。一直以为description的作用不大，直到实验室的同学说你检查一下你的Graph，我才发现，原来是代码写的有问题，本应该将description送入CNN的节点连接的是title的输入。所以，在写代码的时候把命名空间做好，在TensorBoard中检查图的连接以确保模型的正确性。
