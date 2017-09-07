@@ -1,11 +1,8 @@
-#coding=utf-8
+# coding=utf-8
 import tensorflow as tf
 import numpy as np
 import math
-import os
-import time
 import pandas as pd
-from six.moves import xrange
 
 
 def load_data(model="whole", shuffle=False):
@@ -19,53 +16,53 @@ def load_data(model="whole", shuffle=False):
         desc_data： description数据
         y： 数据标签
     """
-    print "Loading "+model+" data."
-    
+    print "Loading " + model + " data."
+
     if model == "whole":
         title_path = './cache/train_data_title.npy'
         desc_path = './cache/train_data_desc.npy'
         label_path = './cache/train_label.csv'
-        
+
         print("Loading title  data ...")
         title_data = np.load(title_path)
         print("Loading description  data ...")
         desc_data = np.load(desc_path)
         print ("Loading label...")
-        y = pd.read_csv(label_path,header=None)
+        y = pd.read_csv(label_path, header=None)
         y = np.array(y.iloc[:, 1])
-    
+
     if model == "train":
         title_path = './cache/train/new_train_title.npy'
         desc_path = './cache/train/new_train_desc.npy'
         label_path = './cache/train/new_y_train.npy'
-        
+
         print("Loading train title  data ...")
         title_data = np.load(title_path)
         print("Loading train description  data ...")
         desc_data = np.load(desc_path)
         print ("Loading train label...")
         y = np.load(label_path)
-    
+
     if model == "validation":
         title_path = './cache/valid/new_valid_title.npy'
         desc_path = './cache/valid/new_valid_desc.npy'
         label_path = './cache/valid/new_y_valid.npy'
-        
+
         print("Loading validation title  data ...")
         title_data = np.load(title_path)
         print("Loading validation description  data ...")
         desc_data = np.load(desc_path)
         print ("Loading validation label...")
         y = np.load(label_path)
-    
+
     data_size = y.shape[0]
-    
+
     if shuffle:
         shuffle_indices = np.random.permutation(np.arange(data_size))
         title_data = title_data[shuffle_indices]
         desc_data = desc_data[shuffle_indices]
         y = y[shuffle_indices]
-    
+
     return title_data, desc_data, y
 
 
@@ -84,12 +81,12 @@ def one_hot_coding(y):
     for i in range(len(y)):
         temp = y[i].split(',')
         # 如果分类数大于5，只取前5个分类
-        if (len(temp)>5):
+        if (len(temp) > 5):
             temp = temp[0:5]
         # 设置标签的对应位置为1，其余位置为0
         label = np.zeros(1999)
         index_label = []
-        for j,temp_label in enumerate(temp):
+        for j, temp_label in enumerate(temp):
             label[int(temp_label)] = 1
             index_label.append(int(temp_label))
         one_hot_labels.append(label)
@@ -123,16 +120,16 @@ def get_weights(pos, alpha=1.0, beta=0.0):
         weight = np.ones(1999)
         sigma = 0
         for i in range(len(temp)):
-            sigma += math.log(e, i+2)
+            sigma += math.log(e, i + 2)
         for i, p in enumerate(temp):
-            w = math.log(e, i+2)
-            weight[int(p)] = w*num_label/sigma + beta
+            w = math.log(e, i + 2)
+            weight[int(p)] = w * num_label / sigma + beta
         weights.append(weight)
     weights = np.array(weights, dtype=np.float32)
     # 减小加权的程度
     ones = np.ones_like(weights)
-    weights = alpha*weights + (1.0-alpha)*ones
-    
+    weights = alpha * weights + (1.0 - alpha) * ones
+
     return weights
 
 
@@ -144,7 +141,7 @@ def batch_iter(data, batch_size, num_epochs=1, shuffle=False):
     data_size = len(data)
     # 每个epoch的num_batch
     num_batches_per_epoch = int((len(data) - 1) / batch_size) + 1
-    print("num_batches_per_epoch:",num_batches_per_epoch)
+    print("num_batches_per_epoch:", num_batches_per_epoch)
     for epoch in range(num_epochs):
         # Shuffle the data at each epoch
         if shuffle:
@@ -154,8 +151,8 @@ def batch_iter(data, batch_size, num_epochs=1, shuffle=False):
             start_index = batch_num * batch_size
             end_index = min((batch_num + 1) * batch_size, data_size)
             yield data[start_index:end_index]
-            
-    
+
+
 def eval(predict_label_and_marked_label_list):
     """
     :param predict_label_and_marked_label_list: 一个元组列表。例如
@@ -163,22 +160,21 @@ def eval(predict_label_and_marked_label_list):
       ([3, 2, 1, 4, 7], [5, 7, 3])
      ]
     需要注意这里 predict_label 是去重复的，例如 [1,2,3,2,4,1,6]，去重后变成[1,2,3,4,6]
-    
+
     marked_label_list 本身没有顺序性，但提交结果有，例如上例的命中情况分别为
     [0，0，0，1，1]   (4，5命中)
     [1，0，0，0，1]   (3，7命中)
-
     """
-    right_label_num = 0  #总命中标签数量
-    right_label_at_pos_num = [0, 0, 0, 0, 0]  #在各个位置上总命中数量
-    sample_num = 0   #总问题数量
-    all_marked_label_num = 0    #总标签数量
+    right_label_num = 0  # 总命中标签数量
+    right_label_at_pos_num = [0, 0, 0, 0, 0]  # 在各个位置上总命中数量
+    sample_num = 0  # 总问题数量
+    all_marked_label_num = 0  # 总标签数量
     for predict_labels, marked_labels in predict_label_and_marked_label_list:
         sample_num += 1
         marked_label_set = set(marked_labels)
         all_marked_label_num += len(marked_label_set)
         for pos, label in zip(range(0, min(len(predict_labels), 5)), predict_labels):
-            if label in marked_label_set:     #命中
+            if label in marked_label_set:  # 命中
                 right_label_num += 1
                 right_label_at_pos_num[pos] += 1
 
@@ -186,9 +182,20 @@ def eval(predict_label_and_marked_label_list):
     for pos, right_num in zip(range(0, 5), right_label_at_pos_num):
         precision += ((right_num / float(sample_num))) / math.log(2.0 + pos)  # 下标0-4 映射到 pos1-5 + 1，所以最终+2
     recall = float(right_label_num) / all_marked_label_num
-    if precision*recall==0:
+    if precision * recall == 0:
         return 0
     return (precision * recall) / (precision + recall)
+
+
+def eval_logits(logits, y_index):
+    predict_results = []
+    predict_label_and_marked_label_list = []
+    for logit in logits:
+        predict_results.append(list(np.argsort(logit)[-1:-6:-1]))
+    for predict, label in zip(predict_results, y_index):
+        predict_label_and_marked_label_list.append((list(predict), list(label)))
+    score = eval(predict_label_and_marked_label_list)
+    return score
 
 
 def batch_norm_layer(x, train_phase, scope_bn):
